@@ -6,3 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "3.1.8", features = ["derive"] }
+humantime = "2.1.0"
+hyper = { version = "0.14.20", features = ["server", "http1", "tcp"] }
+log = "0.4"
+pretty_env_logger = "0.4"
+prometheus = "0.13.2"
+regex = "1.7.0"
+reqwest = "0.11.12"
+tokio = { version =  "1.21", features = ["rt-multi-thread", "macros"] }
+lazy_static = "1.4.0"
