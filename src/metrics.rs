@@ -3,29 +3,42 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server, StatusCode,
 };
-//use lazy_static::lazy_static;
-use prometheus::{labels, opts, register_counter};
-use prometheus::{Counter, Encoder, TextEncoder};
+use lazy_static::lazy_static;
+use prometheus::{opts, register_gauge};
+use prometheus::{Encoder, Gauge, TextEncoder};
+use std::net::SocketAddr;
 
-// lazy_static! {
-//     static ref CURRENT_BLOCK_HEIGHT: Counter = register_counter!(opts!(
-//         "bot_requests_total",
-//         "Number of bot requests received.",
-//         labels! {"handler" => "all",}
-//     ))
-//     .unwrap();
-// }
-// pub fn bot_requests_counter_inc() {
-//     CURRENT_BLOCK_HEIGHT.inc();
-// }
+lazy_static! {
+    static ref BITCOIN_BLOCK_HEIGHT: Gauge = register_gauge!(opts!(
+        "bitcoin_block_height",
+        "Bitcoin block height in the longest chain.",
+    ))
+    .unwrap();
+    static ref BITCOIN_CANISTER_BLOCK_HEIGHT: Gauge = register_gauge!(opts!(
+        "bitcoin_canister_block_height",
+        "Bitcoin canister block height in the longest chain.",
+    ))
+    .unwrap();
+    static ref BLOCK_HEIGHT_DIFFERENCE: Gauge = register_gauge!(opts!(
+        "block_height_difference",
+        "Block height difference between bitcoin and bitcoin canister.",
+    ))
+    .unwrap();
+}
+
+pub fn set_bitcoin_block_height(height: u32) {
+    BITCOIN_BLOCK_HEIGHT.set(height as f64);
+}
+
+pub fn set_bitcoin_canister_block_height(height: u32) {
+    BITCOIN_CANISTER_BLOCK_HEIGHT.set(height as f64);
+}
+
+pub fn set_block_height_difference(height_difference: i32) {
+    BLOCK_HEIGHT_DIFFERENCE.set(height_difference as f64);
+}
 
 async fn handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    // println!(
-    //     "ABC serve_req method={}, uri={}",
-    //     req.method(),
-    //     req.uri().path()
-    // );
-
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/metrics") => {
             let encoder = TextEncoder::new();
@@ -53,12 +66,9 @@ async fn handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     }
 }
 
-pub fn run_server() {
+pub fn run_server(addr: SocketAddr) {
     tokio::spawn(async move {
-        // https://stackoverflow.com/questions/39525820/docker-port-forwarding-not-working
-        // Replace 127.0.0.1 with 0.0.0.0.
-        let addr = ([0, 0, 0, 0], 8008).into();
-        println!("Listening on http://{}", addr);
+        println!("Exposing metrics on http://{}/metrics", addr);
 
         let serve_future = Server::bind(&addr).serve(make_service_fn(|_| async {
             Ok::<_, hyper::Error>(service_fn(handler))
